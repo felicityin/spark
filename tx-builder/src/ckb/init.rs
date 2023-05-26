@@ -64,29 +64,29 @@ impl<C: CkbRpc> IInitTxBuilder<C> for InitTxBuilder<C> {
         let outputs_data = self.build_data();
 
         let outputs = vec![
-            // issue cell
-            CellOutput::new_builder()
-                .lock(omni_eth_supply_lock(
-                    &self.network_type,
-                    H160::default(),
-                    Byte32::default(),
-                )?)
-                .type_(Some(default_type_id()).pack())
-                .build_exact_capacity(Capacity::bytes(outputs_data[0].len())?)?,
-            // selection cell
-            CellOutput::new_builder()
-                .lock(selection_lock(
-                    &self.network_type,
-                    &Byte32::default(),
-                    &Byte32::default(),
-                ))
-                .type_(Some(default_type_id()).pack())
-                .build_exact_capacity(Capacity::bytes(outputs_data[1].len())?)?,
-            // // checkpoint cell
+            // // issue cell
             // CellOutput::new_builder()
-            //     .lock(always_success_lock(&self.network_type))
-            //     .type_(Some(checkpoint_type(&self.network_type, &H256::default())).pack())
-            //     .build_exact_capacity(Capacity::bytes(outputs_data[2].len())?)?,
+            //     .lock(omni_eth_supply_lock(
+            //         &self.network_type,
+            //         H160::default(),
+            //         Byte32::default(),
+            //     )?)
+            //     .type_(Some(default_type_id()).pack())
+            //     .build_exact_capacity(Capacity::bytes(outputs_data[0].len())?)?,
+            // // selection cell
+            // CellOutput::new_builder()
+            //     .lock(selection_lock(
+            //         &self.network_type,
+            //         &Byte32::default(),
+            //         &Byte32::default(),
+            //     ))
+            //     .type_(Some(default_type_id()).pack())
+            //     .build_exact_capacity(Capacity::bytes(outputs_data[1].len())?)?,
+            // checkpoint cell
+            CellOutput::new_builder()
+                .lock(always_success_lock(&self.network_type))
+                .type_(Some(checkpoint_type(&self.network_type, &H256::default())).pack())
+                .build_exact_capacity(Capacity::bytes(outputs_data[0].len())?)?,
             // // metadata cell
             // CellOutput::new_builder()
             //     .lock(always_success_lock(&self.network_type))
@@ -114,7 +114,7 @@ impl<C: CkbRpc> IInitTxBuilder<C> for InitTxBuilder<C> {
         let cell_deps = vec![
             omni_lock_dep(&self.network_type),
             secp256k1_lock_dep(&self.network_type),
-            // checkpoint_dep(&self.network_type),
+            checkpoint_dep(&self.network_type),
             // metadata_dep(&self.network_type),
         ];
 
@@ -148,14 +148,14 @@ impl<C: CkbRpc> IInitTxBuilder<C> for InitTxBuilder<C> {
 
 impl<C: CkbRpc> InitTxBuilder<C> {
     fn build_data(&self) -> Vec<Bytes> {
-        let _checkpoint: CheckpointCellData = (&self.checkpoint).into();
+        let checkpoint: CheckpointCellData = (&self.checkpoint).into();
         vec![
             // issue cell data
-            InfoCellData::new_simple(0, 0, H256::default()).pack(),
-            // selection cell data
-            Bytes::default(),
-            // // checkpoint cell data
-            // checkpoint.as_bytes(),
+            // InfoCellData::new_simple(0, 0, H256::default()).pack(),
+            // // selection cell data
+            // Bytes::default(),
+            // checkpoint cell data
+            checkpoint.as_bytes(),
             // // metadata cell data
             // metadata_cell_data(
             //     START_EPOCH,
@@ -181,63 +181,63 @@ impl<C: CkbRpc> InitTxBuilder<C> {
         seeder_addr: H160,
     ) -> Result<(TransactionView, TypeIds)> {
         let mut outputs = tx.outputs().into_iter().collect::<Vec<_>>();
-        let mut outputs_data = tx.outputs_data().into_iter().collect::<Vec<_>>();
+        // let mut outputs_data = tx.outputs_data().into_iter().collect::<Vec<_>>();
 
         let first_input = tx.inputs().get(0).unwrap();
 
-        // issue cell
-        let issue_type_args = type_id(&first_input, 0);
-        let issue_type_id = type_id_script(&issue_type_args);
-        let issue_lock = omni_eth_supply_lock(
-            &self.network_type,
-            seeder_addr,
-            issue_type_id.calc_script_hash(),
-        )?;
-        let issue_lock_hash = issue_lock.calc_script_hash();
+        // // issue cell
+        // let issue_type_args = type_id(&first_input, 0);
+        // let issue_type_id = type_id_script(&issue_type_args);
+        // let issue_lock = omni_eth_supply_lock(
+        //     &self.network_type,
+        //     seeder_addr,
+        //     issue_type_id.calc_script_hash(),
+        // )?;
+        // let issue_lock_hash = issue_lock.calc_script_hash();
+        // outputs[0] = tx
+        //     .output(0)
+        //     .unwrap()
+        //     .as_builder()
+        //     .lock(issue_lock)
+        //     .type_(Some(issue_type_id).pack())
+        //     .build();
+
+        // // selection cell
+        // let selection_type_args = type_id(&first_input, 1);
+        // let selection_type_id = type_id_script(&selection_type_args);
+        // let selection_lock = selection_lock(
+        //     &self.network_type,
+        //     &issue_lock_hash,
+        //     &Byte32::default(), // todo: reward smt type id
+        // );
+        // let selection_lock_hash = selection_lock.calc_script_hash();
+        // outputs[1] = tx
+        //     .output(1)
+        //     .unwrap()
+        //     .as_builder()
+        //     .lock(selection_lock)
+        //     .type_(Some(selection_type_id).pack())
+        //     .build();
+
+        // // issue cell data
+        // outputs_data[0] = InfoCellData::new_simple(
+        //     0,
+        //     self.max_supply,
+        //     to_h256(&xudt_type(&self.network_type, &selection_lock_hash).calc_script_hash()),
+        // )
+        // .pack()
+        // .pack();
+
+        // checkpoint cell
+        let checkpoint_type_args = type_id(&first_input, 0);
+        let checkpoint_type =
+             checkpoint_type(&self.network_type, &checkpoint_type_args);
         outputs[0] = tx
             .output(0)
             .unwrap()
             .as_builder()
-            .lock(issue_lock)
-            .type_(Some(issue_type_id).pack())
+            .type_(Some(checkpoint_type).pack())
             .build();
-
-        // selection cell
-        let selection_type_args = type_id(&first_input, 1);
-        let selection_type_id = type_id_script(&selection_type_args);
-        let selection_lock = selection_lock(
-            &self.network_type,
-            &issue_lock_hash,
-            &Byte32::default(), // todo: reward smt type id
-        );
-        let selection_lock_hash = selection_lock.calc_script_hash();
-        outputs[1] = tx
-            .output(1)
-            .unwrap()
-            .as_builder()
-            .lock(selection_lock)
-            .type_(Some(selection_type_id).pack())
-            .build();
-
-        // issue cell data
-        outputs_data[0] = InfoCellData::new_simple(
-            0,
-            self.max_supply,
-            to_h256(&xudt_type(&self.network_type, &selection_lock_hash).calc_script_hash()),
-        )
-        .pack()
-        .pack();
-
-        // // checkpoint cell
-        // let checkpoint_type_args = type_id(&first_input, 2);
-        // let checkpoint_type =
-        //      checkpoint_type(&self.network_type, &checkpoint_type_args);
-        // outputs[2] = tx
-        //     .output(2)
-        //     .unwrap()
-        //     .as_builder()
-        //     .type_(Some(checkpoint_type).pack())
-        //     .build();
 
         // // metadata cell
         // let metadata_type_args = type_id(&first_input, 3);
@@ -252,18 +252,18 @@ impl<C: CkbRpc> InitTxBuilder<C> {
         let tx = tx
             .as_advanced_builder()
             .set_outputs(outputs)
-            .set_outputs_data(outputs_data)
+            // .set_outputs_data(outputs_data)
             .build();
 
         let type_ids = TypeIds {
-            issue_type_id:        issue_type_args,
-            selection_type_id:    selection_type_args,
+            issue_type_id:        H256::default(),
+            selection_type_id:    H256::default(),
             checkpoint_type_id:   H256::default(),
             metadata_type_id:     H256::default(),
             reward_type_id:       H256::default(),
             stake_smt_type_id:    H256::default(),
             delegate_smt_type_id: H256::default(),
-            xudt_lock_id:         to_h256(&selection_lock_hash),
+            xudt_lock_id:         H256::default(),
         };
 
         Ok((tx, type_ids))
