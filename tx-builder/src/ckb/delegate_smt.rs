@@ -546,6 +546,13 @@ impl<'a, C: CkbRpc, D: DelegateSmtStorage> DelegateSmtTxBuilder<'a, C, D> {
             })
             .collect();
 
+        for item in new_delegators.iter() {
+            println!(
+                "to be inserted--------staker: {}, delegator: {}, amount: {}",
+                staker, item.user, item.amount
+            );
+        }
+
         self.delegate_smt_storage
             .insert(
                 self.current_epoch + INAUGURATION,
@@ -553,6 +560,28 @@ impl<'a, C: CkbRpc, D: DelegateSmtStorage> DelegateSmtTxBuilder<'a, C, D> {
                 new_delegators,
             )
             .await?;
+
+        let leaves = self
+            .delegate_smt_storage
+            .get_sub_leaves(self.current_epoch + INAUGURATION, staker.0.into())
+            .await
+            .unwrap();
+        for item in leaves.iter() {
+            let amount = self
+                .delegate_smt_storage
+                .get_amount(
+                    self.current_epoch + INAUGURATION,
+                    staker.0.into(),
+                    item.0.to_owned(),
+                )
+                .await
+                .unwrap()
+                .unwrap();
+            println!(
+                "new smt--------------staker: {}, delegator: {}, amount by get_sub_leaves(): {}, amount by get_amount(): {}",
+                staker, item.0, item.1, amount,
+            );
+        }
 
         Ok(StakerSmtRoot {
             staker: staker.0.into(),
